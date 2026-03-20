@@ -524,7 +524,7 @@
     </div>
 
     <div class="card">
-      <div class="card-title">👥 ผู้เล่น <span id="player-count">0</span>/6</div>
+      <div class="card-title">👥 ผู้เล่น <span id="player-count">0</span>/50</div>
       <div class="players-grid" id="players-grid" style="margin-top:14px"></div>
     </div>
 
@@ -1105,7 +1105,7 @@ window.joinRoom = async () => {
     if (!snap.exists()) { toast('❌ ไม่พบห้องนี้'); return; }
     const room = snap.val();
     if (room.status !== 'waiting') { toast('⏳ เกมนี้เริ่มไปแล้ว'); return; }
-    if (Object.keys(room.players||{}).length >= 6) { toast('🚫 ห้องเต็มแล้ว!'); return; }
+    if (Object.keys(room.players||{}).length >= 50) { toast('🚫 ห้องเต็มแล้ว!'); return; }
     S.room = code; S.isHost = false; S.score = 0; S.streak = 0;
     const me = { id: S.profile.id, name: S.profile.name, avatar: S.profile.avatar, score: 0 };
     await update(ref(db, `rooms/${code}/players/${S.profile.id}`), me);
@@ -1156,7 +1156,7 @@ function listenRoom(code) {
 function renderLobby() {
   const plist = Object.values(S.players);
   document.getElementById('player-count').textContent = plist.length;
-  const maxShow = Math.max(plist.length + 2, 4);
+  const maxShow = Math.max(plist.length + 2, 6);
   let html = plist.map(p => `
     <div class="player-slot">
       <img class="avatar-sm" src="${p.avatar||letterAvatar(p.name)}" alt="" style="width:52px;height:52px">
