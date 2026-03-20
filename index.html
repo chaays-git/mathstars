@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<!--
+╔══════════════════════════════════════════════════════════════╗
+║                  🌟 MATH STARS - เกมคณิตศาสตร์              ║
+║      สำหรับเด็กอายุ 6-10 ปี | Mobile & iPad Friendly        ║
+╠══════════════════════════════════════════════════════════════╣
+║  🎮 FEATURES                                                 ║
+║   • ตั้งชื่อ + อัปโหลดรูปโปรไฟล์                            ║
+║   • เล่นคนเดียว (Solo) หรือกับเพื่อน (Multiplayer)           ║
+║   • Leaderboard เหรียญ 🥇🥈🥉                               ║
+║   • Math Race 60 วินาที                                      ║
+╠══════════════════════════════════════════════════════════════╣
+║  🔥 การตั้งค่า Firebase (สำหรับ Multiplayer):               ║
+║  1. ไปที่ https://console.firebase.google.com               ║
+║  2. Create Project > สร้างชื่อโปรเจกต์                      ║
+║  3. Build > Realtime Database > Create Database              ║
+║     > เลือก "Start in test mode" > Enable                   ║
+║  4. Project Settings (⚙️) > Your apps > Add web app (</>) ║
+║  5. คัดลอก firebaseConfig มาใส่ใน FIREBASE_CONFIG ด้านล่าง  ║
+║  6. บันทึกไฟล์แล้วเปิดใหม่                                  ║
+╚══════════════════════════════════════════════════════════════╝
+-->
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>⭐ Math Stars</title>
+  <style>
+    /* ─────────────────────────────────────────
+       RESET & VARIABLES
+    ───────────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    :root {
+      --purple:  #7C3AED;  --purple-l: #EDE9FE;  --purple-d: #5B21B6;
+      --yellow:  #F59E0B;  --yellow-l: #FEF3C7;
+      --green:   #10B981;  --green-l:  #D1FAE5;
+      --red:     #EF4444;  --red-l:    #FEE2E2;
+      --pink:    #EC4899;
+      --blue:    #3B82F6;
+      --g50: #F9FAFB; --g100: #F3F4F6; --g200: #E5E7EB;
+      --g600: #4B5563; --g800: #1F2937;
+      --r: 18px; --r-lg: 24px; --r-xl: 32px;
+      --shadow: 0 4px 20px rgba(124,58,237,.15);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,.18);
+    }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(150deg, #667eea 0%, #764ba2 55%, #f093fb 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ─────────────────────────────────────────
+       APP SHELL
+    ───────────────────────────────────────── */
+    #app {
+      width: 100%; max-width: 480px; height: 100vh;
+      overflow-y: auto; overflow-x: hidden;
+      padding: 20px 16px 48px;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 14px;
+      scrollbar-width: none;
+    }
+    #app::-webkit-scrollbar { display: none; }
+
+    /* ─────────────────────────────────────────
+       SCREENS
+    ───────────────────────────────────────── */
+    .screen {
+      display: none; flex-direction: column;
+      width: 100%; gap: 14px;
+      animation: slideUp .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    .screen.active { display: flex; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+
+    /* ─────────────────────────────────────────
+       PAGE HEADER
+    ───────────────────────────────────────── */
+    .page-header { text-align: center; color: #fff; }
+    .page-header h1 {
+      font-size: clamp(26px, 7vw, 36px); font-weight: 900;
+      text-shadow: 0 3px 12px rgba(0,0,0,.2); margin-bottom: 4px;
+    }
+    .page-header p { font-size: 15px; opacity: .9; }
+
+    /* ─────────────────────────────────────────
+       CARDS
+    ───────────────────────────────────────── */
+    .card {
+      background: #fff; border-radius: var(--r-lg);
+      padding: 22px; box-shadow: var(--shadow); width: 100%;
+    }
+    .card-title {
+      font-size: 19px; font-weight: 800; color: var(--g800); margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: 13px; color: var(--g600); margin-bottom: 18px; line-height: 1.5;
+    }
+
+    /* ─────────────────────────────────────────
+       BUTTONS
+    ───────────────────────────────────────── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 17px 20px; border: none; border-radius: 14px;
+      font-size: 17px; font-weight: 700; cursor: pointer; letter-spacing: .2px;
+      transition: transform .1s ease, box-shadow .1s ease, opacity .1s;
+      user-select: none; -webkit-user-select: none;
+    }
+    .btn:active  { transform: scale(.95); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-purple {
+      background: linear-gradient(135deg, #7C3AED, #6D28D9); color: #fff;
+      box-shadow: 0 4px 18px rgba(124,58,237,.4);
+    }
+    .btn-yellow {
+      background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff;
+      box-shadow: 0 4px 18px rgba(245,158,11,.4);
+    }
+    .btn-green {
+      background: linear-gradient(135deg, #10B981, #059669); color: #fff;
+      box-shadow: 0 4px 18px rgba(16,185,129,.4);
+    }
+    .btn-red {
+      background: linear-gradient(135deg, #EF4444, #DC2626); color: #fff;
+      box-shadow: 0 4px 18px rgba(239,68,68,.4);
+    }
+    .btn-ghost {
+      background: rgba(255,255,255,.18); color: #fff;
+      border: 2px solid rgba(255,255,255,.45);
+    }
+    .btn-sm { padding: 10px 16px; font-size: 14px; border-radius: 10px; width: auto; }
+    .row { display: flex; gap: 12px; width: 100%; }
+    .row .btn { flex: 1; }
+
+    /* ─────────────────────────────────────────
+       INPUTS
+    ───────────────────────────────────────── */
+    .input-label { font-size: 13px; font-weight: 700; color: var(--g800); margin-bottom: 7px; display: block; }
+    .input {
+      width: 100%; padding: 14px 16px; border: 2.5px solid var(--g200);
+      border-radius: var(--r); font-size: 16px; outline: none;
+      color: var(--g800); transition: border-color .2s; background: #fff;
+    }
+    .input:focus { border-color: var(--purple); }
+    .input-code {
+      font-size: 32px; font-weight: 900; text-align: center;
+      letter-spacing: 10px; text-transform: uppercase;
+    }
+    .input-group { display: flex; flex-direction: column; margin-bottom: 16px; }
+
+    /* ─────────────────────────────────────────
+       AVATAR UPLOAD
+    ───────────────────────────────────────── */
+    .avatar-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .avatar-btn {
+      width: 110px; height: 110px; border-radius: 50%;
+      background: var(--purple-l); border: 3px dashed var(--purple);
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; cursor: pointer; overflow: hidden;
+      position: relative; transition: transform .15s;
+    }
+    .avatar-btn:active { transform: scale(.96); }
+    .avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: none; border-radius: 50%; }
+    .avatar-btn .av-icon { font-size: 36px; }
+    .avatar-btn .av-hint { font-size: 11px; color: var(--g600); margin-top: 4px; }
+    .avatar-sm {
+      width: 46px; height: 46px; border-radius: 50%;
+      object-fit: cover; border: 2.5px solid #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,.15); flex-shrink: 0;
+    }
+
+    /* ─────────────────────────────────────────
+       PROFILE BAR (Home)
+    ───────────────────────────────────────── */
+    .profile-bar {
+      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+      background: rgba(255,255,255,.18); backdrop-filter: blur(12px);
+      border-radius: var(--r-lg); color: #fff; width: 100%;
+    }
+    .profile-bar .pname { font-size: 18px; font-weight: 800; }
+    .profile-bar .psub  { font-size: 12px; opacity: .85; }
+    .profile-bar .edit-btn {
+      margin-left: auto; background: rgba(255,255,255,.2);
+      border: 1.5px solid rgba(255,255,255,.4); color: #fff;
+      padding: 7px 14px; border-radius: 10px; font-size: 13px;
+      font-weight: 700; cursor: pointer; transition: transform .1s;
+    }
+    .profile-bar .edit-btn:active { transform: scale(.95); }
+
+    /* ─────────────────────────────────────────
+       GAME CARD (dashboard)
+    ───────────────────────────────────────── */
+    .game-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px; border-radius: var(--r); cursor: pointer;
+      transition: transform .15s, background .15s;
+      background: var(--g50); margin-bottom: 8px;
+    }
+    .game-row:active { transform: scale(.97); background: var(--purple-l); }
+    .game-row:last-child { margin-bottom: 0; }
+    .game-icon-box {
+      width: 60px; height: 60px; border-radius: 16px;
+      background: var(--purple-l); display: flex; align-items: center;
+      justify-content: center; font-size: 30px; flex-shrink: 0;
+    }
+    .game-info .gname { font-size: 17px; font-weight: 800; color: var(--g800); }
+    .game-info .gdesc { font-size: 13px; color: var(--g600); margin-top: 3px; }
+    .game-arrow { font-size: 22px; color: var(--g600); margin-left: auto; flex-shrink: 0; }
+
+    /* ─────────────────────────────────────────
+       LEADERBOARD
+    ───────────────────────────────────────── */
+    .lb-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid var(--g100);
+    }
+    .lb-item:last-child { border: none; }
+    .lb-rank {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 800; flex-shrink: 0;
+    }
+    .lb-r1 { background: #FEF3C7; }
+    .lb-r2 { background: #F3F4F6; }
+    .lb-r3 { background: #FEE2E2; }
+    .lb-ro { background: var(--g100); font-size: 13px; color: var(--g600); }
+    .lb-name { flex: 1; font-size: 15px; font-weight: 700; color: var(--g800); }
+    .lb-score { font-size: 15px; font-weight: 800; color: var(--purple); }
+    .lb-empty { text-align: center; color: #9CA3AF; padding: 20px; font-size: 14px; }
+
+    /* ─────────────────────────────────────────
+       LOBBY
+    ───────────────────────────────────────── */
+    .room-code-box { text-align: center; padding: 16px 0 20px; }
+    .rc-label { font-size: 12px; color: var(--g600); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+    .rc-value { font-size: 52px; font-weight: 900; color: var(--purple); letter-spacing: 14px; margin: 6px 0 12px; }
+    .players-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .player-slot {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 16px 10px; background: var(--g50); border-radius: var(--r); min-height: 110px;
+      text-align: center;
+    }
+    .player-slot.empty { border: 2px dashed var(--g200); opacity: .55; }
+    .player-slot .ps-name { font-size: 14px; font-weight: 700; color: var(--g800); }
+    .player-slot .ps-you  { font-size: 11px; font-weight: 700; color: var(--purple); }
+
+    /* ─────────────────────────────────────────
+       COUNTDOWN
+    ───────────────────────────────────────── */
+    .countdown-center {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 60vh; gap: 20px; color: #fff;
+    }
+    .cd-pre { font-size: 22px; font-weight: 700; opacity: .9; }
+    .cd-num {
+      font-size: 130px; font-weight: 900; line-height: 1;
+      text-shadow: 0 6px 30px rgba(0,0,0,.25);
+      animation: cdPop 1s ease;
+    }
+    @keyframes cdPop {
+      from { transform: scale(1.8); opacity: 0; }
+      60%  { transform: scale(.85); }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .cd-post { font-size: 18px; opacity: .85; }
+
+    /* ─────────────────────────────────────────
+       GAME SCREEN
+    ───────────────────────────────────────── */
+    .game-topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      background: rgba(255,255,255,.18); backdrop-filter: blur(12px);
+      border-radius: var(--r-lg); padding: 12px 16px; width: 100%; color: #fff;
+    }
+    .live-scores-row {
+      display: flex; gap: 10px; overflow-x: auto; flex: 1; scrollbar-width: none;
+    }
+    .live-scores-row::-webkit-scrollbar { display: none; }
+    .live-item { display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; }
+    .live-item img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,.6); }
+    .live-item .lname { font-size: 10px; font-weight: 700; max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .live-item .lpts  { font-size: 13px; font-weight: 900; color: #FDE68A; }
+    .score-timer { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+    .score-box { text-align: right; }
+    .score-num { font-size: 30px; font-weight: 900; line-height: 1; }
+    .score-lbl { font-size: 11px; opacity: .8; }
+    .timer-circle {
+      width: 58px; height: 58px; border-radius: 50%; background: #fff;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .timer-num { font-size: 22px; font-weight: 900; color: var(--purple); line-height: 1; }
+    .timer-lbl { font-size: 9px; color: var(--g600); }
+    .progress-track { width: 100%; height: 8px; background: rgba(255,255,255,.25); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #fff, #FDE68A); border-radius: 99px; transition: width .9s linear; }
+    .question-card {
+      background: #fff; border-radius: var(--r-xl); padding: 28px 22px;
+      text-align: center; box-shadow: var(--shadow-lg); width: 100%;
+    }
+    .q-num  { font-size: 12px; color: var(--g600); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 10px; }
+    .q-text { font-size: clamp(42px, 12vw, 58px); font-weight: 900; color: var(--g800); line-height: 1.1; }
+    .answer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+    .ans-btn {
+      background: var(--g50); border: 3px solid var(--g200); border-radius: 18px;
+      padding: 20px 10px; font-size: clamp(24px, 7vw, 32px); font-weight: 900;
+      color: var(--g800); cursor: pointer; transition: all .13s;
+      user-select: none; -webkit-user-select: none;
+    }
+    .ans-btn:active { transform: scale(.93); }
+    .ans-btn.correct { background: var(--green-l); border-color: var(--green); color: var(--green); }
+    .ans-btn.wrong   { background: var(--red-l);   border-color: var(--red);   color: var(--red); }
+    .streak-bar {
+      text-align: center; color: #fff; font-size: 15px; font-weight: 700;
+      padding: 6px; min-height: 30px;
+    }
+
+    /* ─────────────────────────────────────────
+       RESULTS
+    ───────────────────────────────────────── */
+    .results-hero {
+      text-align: center; padding: 24px 0 10px; color: #fff;
+    }
+    .results-hero img {
+      width: 90px; height: 90px; border-radius: 50%; object-fit: cover;
+      border: 4px solid rgba(255,255,255,.8); margin-bottom: 12px;
+    }
+    .results-hero .rname { font-size: 22px; font-weight: 900; }
+    .results-hero .rscore { font-size: 72px; font-weight: 900; line-height: 1; }
+    .results-hero .rscl   { font-size: 16px; opacity: .85; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .stat-box { border-radius: 14px; padding: 14px; text-align: center; }
+    .stat-box .sv { font-size: 28px; font-weight: 900; }
+    .stat-box .sl { font-size: 12px; color: var(--g600); margin-top: 2px; }
+
+    /* ─────────────────────────────────────────
+       TOAST
+    ───────────────────────────────────────── */
+    #toast {
+      position: fixed; top: 20px; left: 50%;
+      transform: translateX(-50%) translateY(-120px);
+      background: rgba(31,41,55,.92); color: #fff;
+      padding: 12px 22px; border-radius: 99px;
+      font-size: 14px; font-weight: 700; z-index: 999;
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+      white-space: nowrap; backdrop-filter: blur(8px);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ─────────────────────────────────────────
+       POP ANIMATION
+    ───────────────────────────────────────── */
+    .pop-emoji {
+      position: fixed; top: 50%; left: 50%; pointer-events: none; z-index: 500;
+      font-size: 70px; transform: translate(-50%, -50%) scale(0);
+      animation: popOut .65s ease forwards;
+    }
+    @keyframes popOut {
+      0%   { transform: translate(-50%,-50%) scale(0); opacity: 1; }
+      60%  { transform: translate(-50%,-80%) scale(1.3); opacity: 1; }
+      100% { transform: translate(-50%,-130%) scale(.8); opacity: 0; }
+    }
+
+    /* ─────────────────────────────────────────
+       SETUP WARNING BANNER
+    ───────────────────────────────────────── */
+    .warning-banner {
+      background: rgba(245,158,11,.15); border: 1.5px solid rgba(245,158,11,.4);
+      border-radius: var(--r); padding: 12px 16px; color: #fff;
+      font-size: 13px; line-height: 1.55; backdrop-filter: blur(8px);
+      width: 100%;
+    }
+    .warning-banner strong { display: block; margin-bottom: 3px; font-size: 14px; }
+
+    /* ─────────────────────────────────────────
+       PATTERN SEQUENCE (Logic Race)
+    ───────────────────────────────────────── */
+    .pattern-seq {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      align-items: center; gap: 8px; padding: 10px 4px;
+    }
+    .p-item {
+      width: 54px; height: 54px; border-radius: 14px;
+      background: var(--g50); border: 2.5px solid var(--g200);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 900; flex-shrink: 0;
+    }
+    .p-item.p-unknown {
+      background: var(--purple-l); border-color: var(--purple);
+      color: var(--purple); font-size: 22px;
+    }
+    .p-arrow { font-size: 18px; color: var(--g600); flex-shrink: 0; }
+
+    /* ─────────────────────────────────────────
+       PLAYERS LIST (50 คน)
+    ───────────────────────────────────────── */
+    .players-list {
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: 320px; overflow-y: auto; scrollbar-width: thin;
+    }
+    .players-list::-webkit-scrollbar { width: 4px; }
+    .players-list::-webkit-scrollbar-thumb { background: var(--g200); border-radius: 99px; }
+    .player-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; background: var(--g50); border-radius: var(--r);
+      transition: background .15s;
+    }
+    .player-row-me { background: var(--purple-l); }
+    .pr-num  { font-size: 13px; font-weight: 700; color: var(--g600); width: 22px; text-align: center; flex-shrink: 0; }
+    .pr-name { flex: 1; font-size: 15px; font-weight: 700; color: var(--g800); }
+    .pr-ready { font-size: 16px; flex-shrink: 0; }
+
+    /* ─────────────────────────────────────────
+       UTIL
+    ───────────────────────────────────────── */
+    .hidden { display: none !important; }
+    .divider { border: none; border-top: 1px solid var(--g100); margin: 4px 0; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════════════════════════════════
+       SCREEN 1 · PROFILE SETUP
+  ══════════════════════════════════════ -->
+  <div id="screen-profile" class="screen active">
+    <div class="page-header">
+      <h1>🌟 Math Stars</h1>
+      <p>เกมคณิตศาสตร์สุดสนุก!</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👋 สวัสดี!</div>
+      <div class="card-sub">ใส่ชื่อและรูปของเธอก่อนเลยนะ</div>
+
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="av-btn" onclick="document.getElementById('av-input').click()">
+          <img id="av-preview" alt="">
+          <span class="av-icon" id="av-icon">📸</span>
+          <span class="av-hint" id="av-hint">กดเพื่อใส่รูป</span>
+        </div>
+        <input type="file" id="av-input" accept="image/*" style="display:none">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="inp-name">ชื่อเล่น (สูงสุด 12 ตัวอักษร)</label>
+        <input type="text" class="input" id="inp-name" placeholder="ใส่ชื่อของเธอ..." maxlength="12" autocomplete="off" autocorrect="off">
+      </div>
+
+      <button class="btn btn-purple" id="btn-save-profile">✨ ไปเลย!</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 2 · HOME DASHBOARD
+  ══════════════════════════════════════ -->
+  <div id="screen-home" class="screen">
+
+    <div class="profile-bar">
+      <img class="avatar-sm" id="home-av" src="" alt="">
+      <div>
+        <div class="pname" id="home-name">ชื่อ</div>
+        <div class="psub">พร้อมเล่นแล้ว! 🎮</div>
+      </div>
+      <button class="edit-btn" onclick="editProfile()">✏️ แก้ไข</button>
+    </div>
+
+    <div class="warning-banner hidden" id="warn-banner">
+      <strong>⚠️ ยังไม่ได้ตั้งค่า Firebase</strong>
+      เล่นคนเดียวได้เลย! สำหรับเล่นกับเพื่อน → ดูวิธีตั้งค่าในไฟล์ HTML บรรทัดแรก
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎮 เลือกเกม</div>
+      <div class="card-sub">กดเกมที่อยากเล่น</div>
+      <div class="game-row" onclick="goGameOptions('math')">
+        <div class="game-icon-box">🔢</div>
+        <div class="game-info">
+          <div class="gname">Math Race</div>
+          <div class="gdesc">แข่งตอบโจทย์คณิต • 60 วินาที</div>
+        </div>
+        <span class="game-arrow">›</span>
+      </div>
+      <div class="game-row" onclick="goGameOptions('logic')">
+        <div class="game-icon-box" style="background:#FEF3C7">🧩</div>
+        <div class="game-info">
+          <div class="gname">Logic Race</div>
+          <div class="gdesc">ต่อ Pattern ให้ถูก • 60 วินาที</div>
+        </div>
+        <span class="game-arrow">›</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏆 Leaderboard</div>
+      <div id="lb-list"><div class="lb-empty">ยังไม่มีสถิติ เริ่มเล่นกันเลย! 🚀</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 3 · GAME OPTIONS
+  ══════════════════════════════════════ -->
+  <div id="screen-options" class="screen">
+    <div class="page-header">
+      <h1 id="opt-title">🔢 Math Race</h1>
+      <p id="opt-subtitle">ตอบให้เร็ว ตอบให้ถูก!</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 กติกา</div>
+      <p id="opt-rule" style="color:var(--g600);font-size:15px;line-height:1.65">
+        ตอบโจทย์คณิตศาสตร์ให้ได้มากที่สุดภายใน <strong>60 วินาที</strong><br>
+        ✅ ถูก = <strong>+10 คะแนน</strong> &nbsp;🔥 ถูกติดกัน 3 ข้อ = <strong>โบนัส +5</strong>
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👥 โหมดเล่น</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+        <button class="btn btn-green" onclick="startSolo()">🎮 เล่นคนเดียว</button>
+        <button class="btn btn-purple" id="btn-create" onclick="createRoom()">🏠 สร้างห้องเล่น (Multiplayer)</button>
+        <button class="btn btn-yellow" id="btn-join" onclick="showScreen('screen-join')">🚪 เข้าร่วมห้อง</button>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" onclick="showScreen('screen-home')">← กลับหน้าหลัก</button>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 4 · JOIN ROOM
+  ══════════════════════════════════════ -->
+  <div id="screen-join" class="screen">
+    <div class="page-header"><h1>🚪 เข้าร่วมห้อง</h1><p>ใส่รหัสห้องจากเพื่อน</p></div>
+
+    <div class="card">
+      <div class="input-group">
+        <label class="input-label" for="inp-code">รหัสห้อง (4 ตัวอักษร)</label>
+        <input type="text" class="input input-code" id="inp-code"
+               placeholder="XXXX" maxlength="4"
+               autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+      </div>
+      <button class="btn btn-purple" onclick="joinRoom()">🚪 เข้าห้องเลย!</button>
+    </div>
+
+    <button class="btn btn-ghost" onclick="showScreen('screen-options')">← กลับ</button>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 5 · LOBBY
+  ══════════════════════════════════════ -->
+  <div id="screen-lobby" class="screen">
+    <div class="page-header"><h1>🏠 ห้องเกม</h1><p id="lobby-sub">รอเพื่อนเข้าร่วม...</p></div>
+
+    <div class="card">
+      <div class="room-code-box">
+        <div class="rc-label">รหัสห้อง</div>
+        <div class="rc-value" id="lobby-code">----</div>
+        <button class="btn btn-sm" style="background:var(--purple-l);color:var(--purple);border:none;font-weight:700;margin:0 auto" onclick="copyCode()">
+          📋 คัดลอกรหัส
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👥 ผู้เล่น <span id="player-count">0</span>/50</div>
+      <div class="players-list" id="players-grid" style="margin-top:14px"></div>
+    </div>
+
+    <button class="btn btn-green hidden" id="btn-start-mp" onclick="hostStartGame()">🚀 เริ่มเกมได้เลย!</button>
+    <button class="btn btn-ghost" onclick="leaveRoom()">← ออกจากห้อง</button>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 6 · COUNTDOWN
+  ══════════════════════════════════════ -->
+  <div id="screen-countdown" class="screen">
+    <div class="countdown-center">
+      <div class="cd-pre">เตรียมพร้อม...</div>
+      <div class="cd-num" id="cd-num">3</div>
+      <div class="cd-post" id="cd-post">🔢 Math Race กำลังจะเริ่ม!</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 7 · GAME
+  ══════════════════════════════════════ -->
+  <div id="screen-game" class="screen">
+
+    <div class="game-topbar">
+      <div class="live-scores-row" id="live-scores"></div>
+      <div class="score-timer">
+        <div class="score-box">
+          <div class="score-num" id="g-score">0</div>
+          <div class="score-lbl">คะแนน</div>
+        </div>
+        <div class="timer-circle">
+          <div class="timer-num" id="g-timer">60</div>
+          <div class="timer-lbl">วิ</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-track">
+      <div class="progress-fill" id="g-progress" style="width:100%"></div>
+    </div>
+
+    <div class="question-card">
+      <div class="q-num" id="q-num">ข้อที่ 1</div>
+      <div class="q-text" id="q-text">? + ? = ?</div>
+      <div class="pattern-seq hidden" id="pattern-seq"></div>
+    </div>
+
+    <div class="answer-grid" id="ans-grid">
+      <button class="ans-btn" id="ans0"></button>
+      <button class="ans-btn" id="ans1"></button>
+      <button class="ans-btn" id="ans2"></button>
+      <button class="ans-btn" id="ans3"></button>
+    </div>
+
+    <div class="streak-bar" id="streak-bar"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 8 · RESULTS
+  ══════════════════════════════════════ -->
+  <div id="screen-results" class="screen">
+    <div class="results-hero">
+      <img id="res-av" src="" alt="">
+      <div class="rname" id="res-name"></div>
+      <div class="rscore" id="res-score">0</div>
+      <div class="rscl">คะแนน</div>
+      <div id="res-newbest" class="hidden" style="margin-top:8px;font-size:16px;font-weight:800">🌟 สถิติใหม่!</div>
+    </div>
+
+    <div class="card" id="res-stats-card">
+      <div class="card-title" id="res-card-title">📊 ผลคะแนน</div>
+      <div id="res-list" style="margin-top:12px"></div>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-purple" onclick="playAgain()">🔄 เล่นอีกครั้ง</button>
+      <button class="btn btn-ghost" onclick="goHome()">🏠 หน้าหลัก</button>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script type="module">
+
+/* ─────────────────────────────────────────────────────────
+   🔥 FIREBASE CONFIG  ← วางของคุณตรงนี้
+   ─────────────────────────────────────────────────────────
+   ตัวอย่าง:
+   const FIREBASE_CONFIG = {
+     apiKey: "AIzaSy...",
+     authDomain: "my-project.firebaseapp.com",
+     databaseURL: "https://my-project-default-rtdb.firebaseio.com",
+     projectId: "my-project",
+     storageBucket: "my-project.appspot.com",
+     messagingSenderId: "123456789",
+     appId: "1:123:web:abc..."
+   };
+───────────────────────────────────────────────────────── */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDOwi-stB8m8qMYDRMM-Jrq-ZXOw6z1kVg",
+  authDomain: "game-for-my-kids.firebaseapp.com",
+  databaseURL: "https://game-for-my-kids-default-rtdb.firebaseio.com",
+  projectId: "game-for-my-kids",
+  storageBucket: "game-for-my-kids.firebasestorage.app",
+  messagingSenderId: "1093423670827",
+  appId: "1:1093423670827:web:364342d912a9bf7b7c6c6e"
+};
+
+/* ─────────────────────────────────────────────────────────
+   FIREBASE INIT
+───────────────────────────────────────────────────────── */
+import { initializeApp }                                         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getDatabase, ref, set, get, update, remove, onValue, off } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+let db = null;
+let ONLINE = false;
+
+function initFirebase() {
+  try {
+    if (FIREBASE_CONFIG.apiKey.startsWith('PASTE_')) { ONLINE = false; return; }
+    const app = initializeApp(FIREBASE_CONFIG);
+    db = getDatabase(app);
+    ONLINE = true;
+    console.log('✅ Firebase connected');
+  } catch (e) {
+    console.warn('Firebase init error:', e);
+    ONLINE = false;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────── */
+const S = {
+  profile:     null,   // { id, name, avatar }
+  room:        null,   // room code string
+  isHost:      false,
+  players:     {},     // uid → playerData
+  questions:   [],     // generated questions
+  qIdx:        0,      // current question index
+  score:       0,
+  streak:      0,
+  locked:      false,  // answer lock
+  timerRef:    null,
+  roomOff:     null,   // firebase off() fn
+  gameStart:   null,   // epoch ms
+  currentGame: 'math', // 'math' | 'logic'
+};
+const DURATION = 60; // seconds
+
+/* ─────────────────────────────────────────────────────────
+   UTILS
+───────────────────────────────────────────────────────── */
+function uid() { return 'u' + Math.random().toString(36).slice(2, 11); }
+
+function letterAvatar(name, size = 100) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  const ctx = cv.getContext('2d');
+  const palette = ['#7C3AED','#EC4899','#10B981','#F59E0B','#3B82F6','#EF4444','#8B5CF6'];
+  ctx.fillStyle = palette[name.charCodeAt(0) % palette.length];
+  ctx.beginPath(); ctx.arc(size/2, size/2, size/2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${size*.42}px Arial`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(name[0].toUpperCase(), size/2, size/2);
+  return cv.toDataURL('image/jpeg', .85);
+}
+
+function roomCode() {
+  const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:4}, () => ch[Math.floor(Math.random()*ch.length)]).join('');
+}
+
+let _toastTimer;
+function toast(msg, ms = 2600) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+window.toast = toast;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('active'); }
+  document.getElementById('app').scrollTop = 0;
+}
+window.showScreen = showScreen;
+
+function popEmoji() {
+  const opts = ['⭐','✨','🌟','💫','🎉','🔥','🏆'];
+  const el = document.createElement('div');
+  el.className = 'pop-emoji';
+  el.textContent = opts[Math.floor(Math.random()*opts.length)];
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 700);
+}
+
+/* ─────────────────────────────────────────────────────────
+   PROFILE
+───────────────────────────────────────────────────────── */
+function loadProfile() {
+  const raw = localStorage.getItem('mathstars_profile');
+  if (!raw) return false;
+  S.profile = JSON.parse(raw);
+  return true;
+}
+
+function saveProfileData(name, avatar) {
+  S.profile = { id: S.profile?.id || uid(), name, avatar, best: S.profile?.best || 0 };
+  localStorage.setItem('mathstars_profile', JSON.stringify(S.profile));
+}
+
+document.getElementById('btn-save-profile').onclick = () => {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name) { toast('⚠️ ใส่ชื่อก่อนนะ!'); document.getElementById('inp-name').focus(); return; }
+  const preview = document.getElementById('av-preview');
+  const avatar = (preview.style.display !== 'none' && preview.src) ? preview.src : letterAvatar(name);
+  saveProfileData(name, avatar);
+  renderLeaderboard();
+  showHomeScreen();
+};
+
+document.getElementById('inp-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-save-profile').click();
+});
+
+// Avatar upload
+document.getElementById('av-input').onchange = e => {
+  const file = e.target.files[0]; if (!file) return;
+  const fr = new FileReader();
+  fr.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 60;
+      const ctx = cv.getContext('2d');
+      ctx.beginPath(); ctx.arc(30,30,30,0,Math.PI*2); ctx.clip();
+      const sc = Math.max(60/img.width, 60/img.height);
+      ctx.drawImage(img, (60-img.width*sc)/2, (60-img.height*sc)/2, img.width*sc, img.height*sc);
+      const url = cv.toDataURL('image/jpeg', .5);
+      const preview = document.getElementById('av-preview');
+      preview.src = url; preview.style.display = 'block';
+      document.getElementById('av-icon').style.display = 'none';
+      document.getElementById('av-hint').style.display = 'none';
+    };
+    img.src = ev.target.result;
+  };
+  fr.readAsDataURL(file);
+};
+
+window.editProfile = () => {
+  // Pre-fill existing data
+  document.getElementById('inp-name').value = S.profile.name || '';
+  const preview = document.getElementById('av-preview');
+  if (S.profile.avatar) {
+    preview.src = S.profile.avatar; preview.style.display = 'block';
+    document.getElementById('av-icon').style.display = 'none';
+    document.getElementById('av-hint').style.display = 'none';
+  }
+  showScreen('screen-profile');
+};
+
+function showHomeScreen() {
+  document.getElementById('home-av').src = S.profile.avatar;
+  document.getElementById('home-name').textContent = S.profile.name;
+  if (!ONLINE) document.getElementById('warn-banner').classList.remove('hidden');
+  renderLeaderboard();
+  showScreen('screen-home');
+}
+
+/* ─────────────────────────────────────────────────────────
+   LEADERBOARD (local)
+───────────────────────────────────────────────────────── */
+function getLB() { return JSON.parse(localStorage.getItem('mathstars_lb') || '[]'); }
+
+function saveLB(name, avatar, score) {
+  const lb = getLB();
+  const idx = lb.findIndex(e => e.name === name);
+  if (idx >= 0) {
+    if (score > lb[idx].score) { lb[idx].score = score; lb[idx].avatar = avatar; }
+  } else {
+    lb.push({ name, avatar, score });
+  }
+  lb.sort((a,b) => b.score - a.score);
+  if (lb.length > 10) lb.length = 10;
+  localStorage.setItem('mathstars_lb', JSON.stringify(lb));
+}
+
+function renderLeaderboard() {
+  const lb = getLB();
+  const el = document.getElementById('lb-list');
+  if (!lb.length) { el.innerHTML = '<div class="lb-empty">ยังไม่มีสถิติ เริ่มเล่นกันเลย! 🚀</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = lb.slice(0,6).map((e,i) => `
+    <div class="lb-item">
+      <div class="lb-rank ${i<3?'lb-r'+(i+1):'lb-ro'}">${medals[i]||i+1}</div>
+      <img class="avatar-sm" src="${e.avatar}" alt="">
+      <div class="lb-name">${e.name}${i===0?' 🏆':''}</div>
+      <div class="lb-score">${e.score} pt</div>
+    </div>`).join('');
+}
+
+/* ─────────────────────────────────────────────────────────
+   NAVIGATION
+───────────────────────────────────────────────────────── */
+window.goGameOptions = (gameType = 'math') => {
+  S.currentGame = gameType;
+  if (gameType === 'logic') {
+    document.getElementById('opt-title').textContent     = '🧩 Logic Race';
+    document.getElementById('opt-subtitle').textContent  = 'ต่อ Pattern ให้ถูก!';
+    document.getElementById('opt-rule').innerHTML        =
+      'ดูลำดับ Pattern แล้วเลือกสิ่งที่ตามมาภายใน <strong>60 วินาที</strong><br>' +
+      '✅ ถูก = <strong>+10 คะแนน</strong> &nbsp;🔥 ถูกติดกัน 3 ข้อ = <strong>โบนัส +5</strong>';
+  } else {
+    document.getElementById('opt-title').textContent     = '🔢 Math Race';
+    document.getElementById('opt-subtitle').textContent  = 'ตอบให้เร็ว ตอบให้ถูก!';
+    document.getElementById('opt-rule').innerHTML        =
+      'ตอบโจทย์คณิตศาสตร์ให้ได้มากที่สุดภายใน <strong>60 วินาที</strong><br>' +
+      '✅ ถูก = <strong>+10 คะแนน</strong> &nbsp;🔥 ถูกติดกัน 3 ข้อ = <strong>โบนัส +5</strong>';
+  }
+  if (!ONLINE) {
+    document.getElementById('btn-create').disabled = true;
+    document.getElementById('btn-join').disabled = true;
+    document.getElementById('btn-create').textContent = '🔒 ต้องตั้งค่า Firebase ก่อน';
+    document.getElementById('btn-join').textContent = '🔒 ต้องตั้งค่า Firebase ก่อน';
+  }
+  showScreen('screen-options');
+};
+
+window.goHome = () => {
+  stopTimer();
+  if (S.roomOff) { S.roomOff(); S.roomOff = null; }
+  S.room = null; S.isHost = false; S.players = {};
+  renderLeaderboard();
+  showHomeScreen();
+};
+
+/* ─────────────────────────────────────────────────────────
+   QUESTION GENERATOR
+───────────────────────────────────────────────────────── */
+function makeQuestions(n = 80) {
+  return Array.from({length: n}, () => {
+    const add = Math.random() < .6;
+    let a, b, ans, disp;
+    if (add) {
+      a = Math.floor(Math.random()*20)+1;
+      b = Math.floor(Math.random()*20)+1;
+      ans = a+b; disp = `${a} + ${b}`;
+    } else {
+      a = Math.floor(Math.random()*18)+3;
+      b = Math.floor(Math.random()*(a-1))+1;
+      ans = a-b; disp = `${a} − ${b}`;
+    }
+    const wrongs = new Set();
+    const ds = [-3,-2,-1,1,2,3,-5,5,4,-4].sort(()=>Math.random()-.5);
+    for (const d of ds) {
+      const w = ans+d;
+      if (w !== ans && w >= 0 && !wrongs.has(w)) { wrongs.add(w); if (wrongs.size===3) break; }
+    }
+    while (wrongs.size < 3) {
+      const w = Math.floor(Math.random()*45)+1;
+      if (w !== ans) wrongs.add(w);
+    }
+    const opts = [ans, ...wrongs];
+    for (let i=opts.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [opts[i],opts[j]]=[opts[j],opts[i]]; }
+    return { disp, ans, opts };
+  });
+}
+
+/* ─────────────────────────────────────────────────────────
+   PATTERN / LOGIC QUESTION GENERATORS
+───────────────────────────────────────────────────────── */
+function shuffle(arr) {
+  for (let i=arr.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr;
+}
+
+function makePatternQuestions(n = 70) {
+  const types = ['shape','number','animal','english'];
+  return Array.from({length: n}, () => {
+    const t = types[Math.floor(Math.random()*types.length)];
+    return t==='shape'   ? makeShapePattern()
+         : t==='number'  ? makeNumberPattern()
+         : t==='animal'  ? makeAnimalPattern()
+         :                 makeEnglishPattern();
+  });
+}
+
+// ── รูปทรง / สี ──────────────────────────────────────
+function makeShapePattern() {
+  const pool = ['🔴','🔵','🟡','🟢','🟣','🟠','⭕','🔷','🔺','🟥'];
+  shuffle(pool);
+  const len = Math.random()<.6 ? 2 : 3;
+  const pat = pool.slice(0, len);
+  const seq = Array.from({length:5}, (_,i) => pat[i%len]);
+  const ans = pat[5%len];
+  const wrongs = pool.filter(s=>s!==ans).slice(0,3);
+  const opts = shuffle([ans,...wrongs]);
+  return { type:'pattern', hint:'🔷 รูปถัดไปคือ?', seq:[...seq,'?'], ans, opts };
+}
+
+// ── ตัวเลข / คณิต ────────────────────────────────────
+function makeNumberPattern() {
+  const gens = [
+    () => { const s=Math.floor(Math.random()*5)+1, d=Math.floor(Math.random()*3)+2;
+            return {seq:[s,s+d,s+2*d,s+3*d,s+4*d].map(String), ans:String(s+5*d), hint:`🔢 +${d} ทุกข้อ`}; },
+    () => { const s=Math.floor(Math.random()*4)+1;
+            return {seq:[s,s*2,s*4,s*8].map(String), ans:String(s*16), hint:'🔢 ×2 ทุกข้อ'}; },
+    () => { const s=Math.floor(Math.random()*5)+10, d=Math.floor(Math.random()*3)+1;
+            return {seq:[s,s-d,s-2*d,s-3*d].map(String), ans:String(s-4*d), hint:`🔢 −${d} ทุกข้อ`}; },
+  ];
+  const g = gens[Math.floor(Math.random()*gens.length)]();
+  const ans = g.ans;
+  const wrongs = new Set();
+  for (const d of shuffle([-3,-2,-1,1,2,3,4,-4])) {
+    const w = Number(ans)+d; if (w>0 && String(w)!==ans) { wrongs.add(String(w)); if(wrongs.size===3)break; }
+  }
+  while(wrongs.size<3) wrongs.add(String(Number(ans)+Math.floor(Math.random()*6)+1));
+  const opts = shuffle([ans,...wrongs]);
+  return { type:'pattern', hint:g.hint, seq:[...g.seq,'?'], ans, opts };
+}
+
+// ── สัตว์ / ธรรมชาติ ─────────────────────────────────
+function makeAnimalPattern() {
+  const groups = [
+    ['🐱','🐶','🐰'],['🦁','🐯','🐆'],['🐘','🦒','🦓'],
+    ['🌸','🌺','🌻'],['🍎','🍊','🍋'],['🐬','🦈','🐙'],
+    ['🌙','⭐','☀️'],['🍕','🍔','🌮'],['⚽','🏀','🎾'],
+  ];
+  const group = groups[Math.floor(Math.random()*groups.length)];
+  const len = Math.random()<.6 ? 2 : 3;
+  const pat = group.slice(0, len);
+  const seq = Array.from({length:5}, (_,i) => pat[i%len]);
+  const ans = pat[5%len];
+  const allItems = groups.flat();
+  const wrongs = shuffle(allItems.filter(s=>s!==ans)).slice(0,3);
+  const opts = shuffle([ans,...wrongs]);
+  return { type:'pattern', hint:'🐾 ลำดับถัดไปคือ?', seq:[...seq,'?'], ans, opts };
+}
+
+// ── ภาษาอังกฤษ ───────────────────────────────────────
+function makeEnglishPattern() {
+  const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const gens = [
+    // A B C D ?
+    () => { const s=Math.floor(Math.random()*18);
+            const seq=[ABC[s],ABC[s+1],ABC[s+2],ABC[s+3]], ans=ABC[s+4];
+            const w=[ABC[s+5]||'Z',ABC[s+6]||'Y',ABC[s-1]||'A'];
+            return {seq,ans,w,hint:'🔤 ตัวอักษรถัดไป?'}; },
+    // A C E G ?  (skip 1)
+    () => { const s=Math.floor(Math.random()*8);
+            const seq=[ABC[s],ABC[s+2],ABC[s+4],ABC[s+6]], ans=ABC[s+8]||'Z';
+            const w=[ABC[s+9]||'X',ABC[s+7]||'W',ABC[s+5]||'V'];
+            return {seq,ans,w,hint:'🔤 ข้ามหนึ่งตัว'}; },
+    // A Z B Y ?  (from both ends)
+    () => { const fwd='ABCDE', bwd='ZYXWV';
+            const idx=Math.floor(Math.random()*3);
+            const seq=[fwd[idx],bwd[idx],fwd[idx+1],bwd[idx+1]], ans=fwd[idx+2];
+            const w=[bwd[idx+2],fwd[idx+3]||'E',bwd[idx+3]||'U'];
+            return {seq,ans,w,hint:'🔤 สลับหน้า-หลัง'}; },
+  ];
+  const g = gens[Math.floor(Math.random()*gens.length)]();
+  const opts = shuffle([g.ans,...g.w.slice(0,3)]);
+  return { type:'pattern', hint:g.hint, seq:[...g.seq,'?'], ans:g.ans, opts };
+}
+
+/* ─────────────────────────────────────────────────────────
+   SOLO GAME
+───────────────────────────────────────────────────────── */
+window.startSolo = () => {
+  S.questions = S.currentGame==='logic' ? makePatternQuestions(70) : makeQuestions(80);
+  S.qIdx = 0; S.score = 0; S.streak = 0; S.locked = false;
+  S.gameStart = Date.now();
+  S.room = null; S.players = {};
+  document.getElementById('live-scores').innerHTML = '';
+  showScreen('screen-game');
+  renderQuestion();
+  startTimer();
+};
+
+/* ─────────────────────────────────────────────────────────
+   GAME UI
+───────────────────────────────────────────────────────── */
+function renderQuestion() {
+  const q = S.questions[S.qIdx];
+  if (!q) return;
+  document.getElementById('q-num').textContent = `ข้อที่ ${S.qIdx+1}`;
+
+  const qText   = document.getElementById('q-text');
+  const patSeq  = document.getElementById('pattern-seq');
+
+  if (q.type === 'pattern') {
+    // Pattern mode — hide text, show sequence bubbles
+    qText.classList.add('hidden');
+    patSeq.classList.remove('hidden');
+    patSeq.innerHTML = q.seq.map((item, i) =>
+      i === q.seq.length-1
+        ? `<span class="p-item p-unknown">?</span>`
+        : `<span class="p-item">${item}</span>${i < q.seq.length-2 ? '<span class="p-arrow">›</span>' : '<span class="p-arrow">›</span>'}`
+    ).join('');
+    // Show hint in q-num
+    document.getElementById('q-num').textContent = q.hint || 'ลำดับถัดไปคือ?';
+  } else {
+    // Math mode — show text, hide pattern
+    qText.classList.remove('hidden');
+    patSeq.classList.add('hidden');
+    qText.textContent = `${q.disp} = ?`;
+  }
+
+  for (let i=0;i<4;i++) {
+    const btn = document.getElementById('ans'+i);
+    btn.textContent = q.opts[i];
+    btn.className = 'ans-btn';
+    btn.disabled = false;
+  }
+  document.getElementById('g-score').textContent = S.score;
+}
+
+function lockAnswers() {
+  for (let i=0;i<4;i++) document.getElementById('ans'+i).disabled = true;
+}
+
+// Expose answer check to inline onclick
+for (let i=0;i<4;i++) {
+  document.getElementById('ans'+i).onclick = () => handleAnswer(i);
+}
+
+function handleAnswer(idx) {
+  if (S.locked) return;
+  S.locked = true;
+  lockAnswers();
+
+  const q = S.questions[S.qIdx];
+  const picked = q.opts[idx];
+  const correct = picked === q.ans;
+
+  if (correct) {
+    document.getElementById('ans'+idx).classList.add('correct');
+    S.score += 10;
+    S.streak++;
+    if (S.streak >= 3) { S.score += 5; toast(`🔥 Streak ×${S.streak}! +5 โบนัส!`); }
+    popEmoji();
+    if (ONLINE && S.room) updateFirebaseScore();
+  } else {
+    document.getElementById('ans'+idx).classList.add('wrong');
+    S.streak = 0;
+    for (let i=0;i<4;i++) { if (q.opts[i]===q.ans) document.getElementById('ans'+i).classList.add('correct'); }
+  }
+
+  document.getElementById('g-score').textContent = S.score;
+  updateStreak();
+
+  setTimeout(() => {
+    S.qIdx++;
+    S.locked = false;
+    if (S.qIdx < S.questions.length) renderQuestion();
+  }, correct ? 380 : 820);
+}
+
+function updateStreak() {
+  const bar = document.getElementById('streak-bar');
+  bar.textContent = S.streak >= 3 ? `🔥 ถูกติดกัน ${S.streak} ข้อ!` : '';
+}
+
+/* ─────────────────────────────────────────────────────────
+   TIMER
+───────────────────────────────────────────────────────── */
+function startTimer() {
+  const end = S.gameStart + DURATION*1000;
+  stopTimer();
+  S.timerRef = setInterval(() => {
+    const rem = Math.max(0, Math.ceil((end - Date.now())/1000));
+    document.getElementById('g-timer').textContent = rem;
+    document.getElementById('g-timer').style.color = rem<=10 ? 'var(--red)' : rem<=20 ? 'var(--yellow)' : 'var(--purple)';
+    const pct = Math.max(0, ((end-Date.now())/(DURATION*1000))*100);
+    document.getElementById('g-progress').style.width = pct+'%';
+    if (rem <= 0) { stopTimer(); endGame(); }
+  }, 200);
+}
+
+function stopTimer() {
+  if (S.timerRef) { clearInterval(S.timerRef); S.timerRef = null; }
+}
+
+/* ─────────────────────────────────────────────────────────
+   END GAME
+───────────────────────────────────────────────────────── */
+function endGame() {
+  S.locked = true;
+  saveLB(S.profile.name, S.profile.avatar, S.score);
+  const isNew = S.score > (S.profile.best||0);
+  if (isNew) { S.profile.best = S.score; localStorage.setItem('mathstars_profile', JSON.stringify(S.profile)); }
+
+  if (S.room) {
+    // Multiplayer: wait briefly for Firebase sync
+    if (ONLINE) updateFirebaseScore();
+    setTimeout(() => {
+      if (S.isHost) {
+        // Host signals results after a short wait
+        update(ref(db, `rooms/${S.room}`), { status: 'results' }).catch(()=>{});
+      }
+      showResults(isNew);
+    }, 1800);
+  } else {
+    showResults(isNew);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   RESULTS SCREEN
+───────────────────────────────────────────────────────── */
+function showResults(isNew = false) {
+  document.getElementById('res-av').src = S.profile.avatar;
+  document.getElementById('res-name').textContent = S.profile.name;
+  document.getElementById('res-score').textContent = S.score;
+  document.getElementById('res-newbest').classList.toggle('hidden', !isNew);
+
+  const correct = Math.floor(S.score/10);
+  const answered = S.qIdx;
+  const wrong = answered - correct;
+
+  if (S.room && Object.keys(S.players).length > 1) {
+    // Multiplayer results
+    document.getElementById('res-card-title').textContent = '🏆 อันดับคะแนน';
+    const sorted = Object.values(S.players).sort((a,b) => (b.score||0)-(a.score||0));
+    const medals = ['🥇','🥈','🥉'];
+    document.getElementById('res-list').innerHTML = sorted.map((p,i) => `
+      <div class="lb-item">
+        <div class="lb-rank ${i<3?'lb-r'+(i+1):'lb-ro'}">${medals[i]||i+1}</div>
+        <img class="avatar-sm" src="${p.avatar||letterAvatar(p.name)}" alt="">
+        <div class="lb-name">${p.name}${p.id===S.profile.id?' (เธอ)':''}${i===0?' 🏆':''}</div>
+        <div class="lb-score">${p.score||0} pt</div>
+      </div>`).join('');
+  } else {
+    document.getElementById('res-card-title').textContent = '📊 ผลคะแนน';
+    document.getElementById('res-list').innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-box" style="background:var(--purple-l)">
+          <div class="sv" style="color:var(--purple)">${correct}</div>
+          <div class="sl">ข้อที่ถูก ✅</div>
+        </div>
+        <div class="stat-box" style="background:var(--yellow-l)">
+          <div class="sv" style="color:var(--yellow)">${answered}</div>
+          <div class="sl">ข้อที่ตอบ</div>
+        </div>
+        <div class="stat-box" style="background:var(--red-l)">
+          <div class="sv" style="color:var(--red)">${wrong}</div>
+          <div class="sl">ข้อที่ผิด ❌</div>
+        </div>
+        <div class="stat-box" style="background:var(--green-l)">
+          <div class="sv" style="color:var(--green)">${S.profile.best||S.score}</div>
+          <div class="sl">สถิติสูงสุด 🏆</div>
+        </div>
+      </div>`;
+  }
+
+  showScreen('screen-results');
+}
+
+window.playAgain = () => {
+  if (S.room) {
+    // Return to lobby
+    if (ONLINE && S.isHost) {
+      update(ref(db, `rooms/${S.room}`), { status:'waiting', questions:null, gameStartTime:null }).catch(()=>{});
+      update(ref(db, `rooms/${S.room}/players/${S.profile.id}`), { score:0 }).catch(()=>{});
+    } else if (ONLINE) {
+      update(ref(db, `rooms/${S.room}/players/${S.profile.id}`), { score:0 }).catch(()=>{});
+    }
+    showScreen('screen-lobby');
+  } else {
+    startSolo();
+  }
+};
+
+/* ─────────────────────────────────────────────────────────
+   FIREBASE – MULTIPLAYER
+───────────────────────────────────────────────────────── */
+window.createRoom = async () => {
+  if (!ONLINE) { toast('⚠️ ตั้งค่า Firebase ก่อนนะ! ดูวิธีบรรทัดแรกในไฟล์ HTML'); return; }
+  const code = roomCode();
+  S.room = code; S.isHost = true; S.score = 0; S.streak = 0;
+  const me = { id: S.profile.id, name: S.profile.name, avatar: S.profile.avatar, score: 0 };
+  S.players = { [S.profile.id]: me };
+  try {
+    await set(ref(db, `rooms/${code}`), {
+      host: S.profile.id, status: 'waiting', game: S.currentGame, created: Date.now(),
+      players: { [S.profile.id]: me }
+    });
+    document.getElementById('lobby-code').textContent = code;
+    document.getElementById('lobby-sub').textContent = 'รอเพื่อนเข้าร่วม...';
+    document.getElementById('btn-start-mp').classList.remove('hidden');
+    showScreen('screen-lobby');
+    listenRoom(code);
+  } catch(e) { toast('❌ สร้างห้องไม่ได้ ลองใหม่'); console.error(e); }
+};
+
+window.joinRoom = async () => {
+  if (!ONLINE) { toast('⚠️ ตั้งค่า Firebase ก่อนนะ!'); return; }
+  const code = document.getElementById('inp-code').value.trim().toUpperCase();
+  if (code.length !== 4) { toast('⚠️ รหัส 4 ตัวอักษร!'); return; }
+  try {
+    const snap = await get(ref(db, `rooms/${code}`));
+    if (!snap.exists()) { toast('❌ ไม่พบห้องนี้'); return; }
+    const room = snap.val();
+    if (room.status !== 'waiting') { toast('⏳ เกมนี้เริ่มไปแล้ว'); return; }
+    if (Object.keys(room.players||{}).length >= 50) { toast('🚫 ห้องเต็มแล้ว! (50 คน)'); return; }
+    S.room = code; S.isHost = false; S.score = 0; S.streak = 0;
+    const me = { id: S.profile.id, name: S.profile.name, avatar: S.profile.avatar, score: 0 };
+    await update(ref(db, `rooms/${code}/players/${S.profile.id}`), me);
+    document.getElementById('lobby-code').textContent = code;
+    document.getElementById('lobby-sub').textContent = 'รอ Host เริ่มเกม...';
+    document.getElementById('btn-start-mp').classList.add('hidden');
+    document.getElementById('inp-code').value = '';
+    showScreen('screen-lobby');
+    listenRoom(code);
+  } catch(e) { toast('❌ เข้าห้องไม่ได้'); console.error(e); }
+};
+
+function listenRoom(code) {
+  if (S.roomOff) S.roomOff();
+  const r = ref(db, `rooms/${code}`);
+  const unsub = onValue(r, snap => {
+    if (!snap.exists()) { toast('🚪 ห้องถูกปิด'); goHome(); return; }
+    const room = snap.val();
+    S.players = room.players || {};
+    renderLobby();
+    updateLiveScores();
+
+    // Host started game
+    if (room.status === 'playing' &&
+        !document.getElementById('screen-game').classList.contains('active') &&
+        !document.getElementById('screen-countdown').classList.contains('active')) {
+      S.currentGame = room.game || 'math';
+      S.questions = room.questions || (S.currentGame==='logic' ? makePatternQuestions(70) : makeQuestions(80));
+      S.gameStart = room.gameStartTime || Date.now();
+      S.qIdx = 0; S.score = 0; S.streak = 0; S.locked = false;
+      startCountdown(() => {
+        document.getElementById('live-scores').innerHTML = '';
+        showScreen('screen-game');
+        renderQuestion();
+        updateLiveScores();
+        startTimer();
+      });
+    }
+
+    if (room.status === 'results') {
+      stopTimer();
+      S.players = room.players || {};
+      showResults(false);
+    }
+  });
+  S.roomOff = () => off(r);
+}
+
+function renderLobby() {
+  const plist = Object.values(S.players);
+  document.getElementById('player-count').textContent = plist.length;
+  const html = plist.map((p, i) => `
+    <div class="player-row ${p.id===S.profile.id ? 'player-row-me' : ''}">
+      <div class="pr-num">${i+1}</div>
+      <img class="avatar-sm" src="${p.avatar||letterAvatar(p.name)}" alt="" style="width:40px;height:40px;flex-shrink:0">
+      <div class="pr-name">${p.name}${p.id===S.profile.id ? ' 👈' : ''}</div>
+      <div class="pr-ready">✅</div>
+    </div>`).join('');
+  document.getElementById('players-grid').innerHTML = html ||
+    `<div style="text-align:center;color:#9CA3AF;padding:16px;font-size:14px">รอผู้เล่นเข้าร่วม...</div>`;
+}
+
+function updateLiveScores() {
+  if (!Object.keys(S.players).length) return;
+  const sorted = Object.values(S.players).sort((a,b)=>(b.score||0)-(a.score||0));
+  document.getElementById('live-scores').innerHTML = sorted.map(p => `
+    <div class="live-item">
+      <img src="${p.avatar||letterAvatar(p.name)}" alt="">
+      <div class="lname">${p.name}</div>
+      <div class="lpts">${p.score||0}</div>
+    </div>`).join('');
+}
+
+window.hostStartGame = async () => {
+  if (!S.isHost) return;
+  const qs = S.currentGame==='logic' ? makePatternQuestions(70) : makeQuestions(80);
+  const gameStart = Date.now() + 4000;
+  S.questions = qs; S.gameStart = gameStart;
+  S.qIdx = 0; S.score = 0; S.streak = 0; S.locked = false;
+  try {
+    await update(ref(db, `rooms/${S.room}`), { status:'playing', game:S.currentGame, questions:qs, gameStartTime:gameStart });
+    startCountdown(() => {
+      document.getElementById('live-scores').innerHTML = '';
+      showScreen('screen-game');
+      renderQuestion();
+      updateLiveScores();
+      startTimer();
+    });
+  } catch(e) { toast('❌ เริ่มเกมไม่ได้'); console.error(e); }
+};
+
+async function updateFirebaseScore() {
+  if (!ONLINE || !S.room) return;
+  try { await update(ref(db, `rooms/${S.room}/players/${S.profile.id}`), { score: S.score }); }
+  catch(e) { /* silent */ }
+}
+
+window.leaveRoom = async () => {
+  stopTimer();
+  if (S.room && ONLINE) {
+    try {
+      await remove(ref(db, `rooms/${S.room}/players/${S.profile.id}`));
+      if (S.isHost) await remove(ref(db, `rooms/${S.room}`));
+    } catch(e) { /* silent */ }
+  }
+  if (S.roomOff) { S.roomOff(); S.roomOff = null; }
+  S.room = null; S.isHost = false; S.players = {};
+  renderLeaderboard(); showHomeScreen();
+};
+
+window.copyCode = () => {
+  const code = S.room || document.getElementById('lobby-code').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => toast(`📋 คัดลอกรหัส ${code} แล้ว!`));
+  } else { toast(`รหัส: ${code}`); }
+};
+
+/* ─────────────────────────────────────────────────────────
+   COUNTDOWN
+───────────────────────────────────────────────────────── */
+function startCountdown(cb) {
+  showScreen('screen-countdown');
+  document.getElementById('cd-post').textContent =
+    S.currentGame==='logic' ? '🧩 Logic Race กำลังจะเริ่ม!' : '🔢 Math Race กำลังจะเริ่ม!';
+  let n = 3;
+  document.getElementById('cd-num').textContent = n;
+  const iv = setInterval(() => {
+    n--;
+    if (n > 0) { document.getElementById('cd-num').textContent = n; }
+    else { clearInterval(iv); document.getElementById('cd-num').textContent = '🚀'; setTimeout(cb, 500); }
+  }, 1000);
+}
+
+/* ─────────────────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────────────────── */
+function init() {
+  initFirebase();
+  if (loadProfile()) {
+    renderLeaderboard();
+    showHomeScreen();
+  } else {
+    showScreen('screen-profile');
+  }
+}
+
+init();
+
+</script>
+</body>
+</html>
