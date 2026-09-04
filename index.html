@@ -693,17 +693,21 @@ const FIREBASE_CONFIG = {
 ───────────────────────────────────────────────────────── */
 import { initializeApp }                                         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getDatabase, ref, set, get, update, remove, onValue, off } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+import { getAuth, signInAnonymously }                              from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 let db = null;
 let ONLINE = false;
 
-function initFirebase() {
+async function initFirebase() {
   try {
     if (FIREBASE_CONFIG.apiKey.startsWith('PASTE_')) { ONLINE = false; return; }
     const app = initializeApp(FIREBASE_CONFIG);
+    // ต้อง sign in แบบ anonymous ก่อนแตะ database (security rules ต้องการ auth != null)
+    // ผู้เล่นไม่ต้องกรอกอะไร ระบบทำให้เงียบๆ เบื้องหลัง
+    await signInAnonymously(getAuth(app));
     db = getDatabase(app);
     ONLINE = true;
-    console.log('✅ Firebase connected');
+    console.log('✅ Firebase connected (anonymous auth)');
   } catch (e) {
     console.warn('Firebase init error:', e);
     ONLINE = false;
@@ -1425,8 +1429,8 @@ function startCountdown(cb) {
 /* ─────────────────────────────────────────────────────────
    INIT
 ───────────────────────────────────────────────────────── */
-function init() {
-  initFirebase();
+async function init() {
+  await initFirebase();
   if (loadProfile()) {
     renderLeaderboard();
     showHomeScreen();
